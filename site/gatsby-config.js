@@ -8,11 +8,12 @@
  * @type {import('gatsby').GatsbyConfig}
  */
 module.exports = {
+  pathPrefix: "/toss-a-coin",
   siteMetadata: {
-    title: `Gatsby Default Starter`,
-    description: `Kick off your next, great Gatsby project with this default starter. This barebones starter ships with the main Gatsby configuration files you might need.`,
-    author: `@gatsbyjs`,
-    siteUrl: `https://gatsbystarterdefaultsource.gatsbyjs.io/`,
+    title: `Coin Toss Simulator`,
+    description: `Simply simulate coin tossing process.`,
+    author: `@tmt514`,
+    siteUrl: `https://https://tmt514.github.io/toss-a-coin/`,
   },
   plugins: [
     {
