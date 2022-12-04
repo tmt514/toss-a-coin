@@ -234,6 +234,9 @@ textarea.toss {
 }
 
 button.toss {
+  text-align:center;
+  vertical-align:middle;
+  min-width: 50px;
   padding: 10px;
   font-size: 120%;
   border-radius: 5px;
@@ -262,4 +265,9 @@ p.toss-msg {
 }
 p.toss-error {
   color: rgb(255, 99, 91);
+}
+
+input#toss-count {
+  font-size: 120%;
+  width: 100px;
 }

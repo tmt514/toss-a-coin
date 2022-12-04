@@ -7,7 +7,7 @@
 // You can delete this file if you're not using it
 exports.onRouteUpdate = ({location}) => {
   console.log('new pathname', location.pathname);
-  if (window.MathJax !== undefined) {
+  if (window.MathJax !== undefined && typeof window.MathJax.typeset === "function" ) {
     window.MathJax.typeset();
   }
 };

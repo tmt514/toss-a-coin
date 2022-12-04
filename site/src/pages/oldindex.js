@@ -1,13 +1,6 @@
 import * as React from "react"
 import { Link } from "gatsby"
 import { StaticImage } from "gatsby-plugin-image"
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import {
-  faRotateLeft,
-  faHandLizard,
-  faPlay,
-  faForward,
-} from '@fortawesome/free-solid-svg-icons'
 
 import Layout from "../components/layout"
 import Seo from "../components/seo"
@@ -136,14 +129,16 @@ class Simulator extends React.Component {
 
   static GetDefaultState() {
     var state = {
-      cmdQueue: [],
+      seq: -1,
       currentCoinIndex: -1,
+      currentScriptStep: 0,
       currentScriptInnerStep: 0,
       tossed: 0,
       heads: 0,
       tails: 0,
       message: "",
-      hasError: false
+      hasError: false,
+      done: false,
     };
     return {...state};
   }
@@ -151,34 +146,69 @@ class Simulator extends React.Component {
     super(props);
     this.tosslimit = 1000;
     this.state = Simulator.GetDefaultState();
-    this.state.currentCoinIndex = Math.floor(Math.random() * props.urn.length);
-  }
-
-  componentDidMount() {
-    window.allTimeOuts = [];
   }
 
   tick() {
     console.log("TICK!");
     var state = {...this.state};
-    if (state.cmdQueue.length === 0) return;
-
+    if (state.seq !== this.props.seq) return;
+    if (state.done === true) return;
+    if (state.hasError === true) return;
     var callback = () => {
       var id = setTimeout(this.tick.bind(this), 1);
       window.allTimeOuts.push(id);
     };
 
     if (state.tossed >= this.tosslimit) {
-      state.cmdQueue = [];
+      state.done = true;
       state.message = "Simulation finished because number of tossed coins reaches the limit."
       this.setState(state, callback);
       return;
     }
+    if (this.props.cmds.length <= state.currentScriptStep) {
+      state.done = true;
+      state.message = "Simulation finished because there is no more command."
+      this.setState(state, callback);
+      return;
+    }
 
-    var cmd = state.cmdQueue[0];
-    if (cmd[0] === "Toss") {
-      
-      // simulate here.
+    var cmd = this.props.cmds[state.currentScriptStep];
+    if (cmd === undefined) {
+      state.hasError = true;
+      state.message = "Cannot find next command!";
+      console.log(state);
+      this.setState(state, callback);
+      return;
+    }
+    else if (cmd[0] === "Draw") {
+
+      state.currentCoinIndex = Math.floor(Math.random() * this.props.urn.length);
+      state.currentScriptStep += 1;
+      this.setState(state, callback);
+      return;
+
+    } else if (cmd[0] === "Toss") {
+      if (!(state.currentCoinIndex >= 0 && state.currentCoinIndex < this.props.urn.length)) {
+        state.hasError = true;
+        state.message = "You do not have a coin at hand!";
+        this.setState(state, callback);
+        return;
+      }
+
+      var looptimes = this.tosslimit;
+      if (cmd.length >= 2) {
+        if (cmd[1] === "") looptimes = this.tosslimit;
+        else 
+        looptimes = parseInt(cmd[1]);
+      }
+      if (state.currentScriptInnerStep >= looptimes) {
+        state.currentScriptStep += 1;
+        state.currentScriptInnerStep = 0;
+        this.setState(state, callback);
+        return;
+      }
+
+      state.currentScriptInnerStep += 1;
       state.tossed += 1;
       var p = this.props.urn[state.currentCoinIndex];
       if (Math.random() <= p) {
@@ -186,22 +216,19 @@ class Simulator extends React.Component {
       } else {
         state.tails += 1;
       }
-
-      // update cmdQueue
-      if (cmd[1] <= 1) {
-        state.message = "Tossing coins..."
-        state.cmdQueue.shift();
-        if (state.cmdQueue.length === 0) {
-          state.message = "Done!"
-        }
-      } else {
-        state.message = "Tossing coins..."
-        state.cmdQueue[0][1] -= 1;
-      }
       this.setState(state, callback);
-    } else if (cmd[0] === "DrawAnotherCoin") {
-      state.message = "OK draw another coin."
 
+
+    } else if (cmd[0] === "DrawAnotherCoin") {
+
+      if (this.props.urn.length <= 1) {
+        state.hasError = true;
+        state.message = "There is no more coin in the urn!";
+        this.setState(state, callback);
+        return;
+      }
+      
+      
       var newCoin = Math.floor(Math.random() * this.props.urn.length);
       var cnt=0;
       while (newCoin === state.currentCoinIndex) {
@@ -212,53 +239,34 @@ class Simulator extends React.Component {
       }
 
       state.currentCoinIndex = newCoin;
-      state.cmdQueue.shift();
+      state.currentScriptStep += 1;
       this.setState(state, callback);
     } else {
       console.log("Unknown Command!");
-      state.message = "Unknown command."
-      state.cmdQueue.shift();
+      state.hasError = true;
       this.setState(state, callback);
     }
 
 
   }
 
-  theUltimateCallback() {
-    for (var id of window.allTimeOuts) {
-      window.clearTimeout(id);
+  componentDidMount() {
+    console.log(this.props);
+    if (this.props.allowToStart === true) {
+      var id = setTimeout(this.tick.bind(this), 5);
+      window.allTimeOuts.push(id);
     }
-    window.allTimeOuts = [];
-    var id = setTimeout(this.tick.bind(this), 5);
-    window.allTimeOuts.push(id);
   }
 
-  restartSimulation() {
-    var state = Simulator.GetDefaultState();
-    state.currentCoinIndex = Math.floor(Math.random() * this.props.urn.length);
-    this.setState(state, this.theUltimateCallback.bind(this));
-  }
-  drawAnotherCoin() {
-    var state = {...this.state};
-    state.cmdQueue.push(["DrawAnotherCoin"]);
-    this.setState(state, this.theUltimateCallback.bind(this));
-  }
-
-  setupTossByCount(count) {
-    var state = {...this.state};
-    state.cmdQueue.push(["Toss", count]);
-    this.setState(state, this.theUltimateCallback.bind(this));
-  }
-  toss() {
-    var count = document.getElementById("toss-count").value;
-    count=parseInt(count);
-    this.setupTossByCount(count);
-    return false
-  }
-  tossAll() {
-    var count = this.tosslimit - this.state.tossed;
-    this.setupTossByCount(count);
-    return false
+  componentDidUpdate() {
+    if (this.props.allowToStart === true && this.props.seq !== this.state.seq) {
+      var state = Simulator.GetDefaultState();
+      state.seq = this.props.seq;
+      this.setState(state, () => {
+        var id = setTimeout(this.tick.bind(this), 5);
+        window.allTimeOuts.push(id);
+      });
+    }
   }
 
   render() {
@@ -266,35 +274,11 @@ class Simulator extends React.Component {
     var vt = this.state.tails / this.state.tossed;
     return (
       <div>
-        <h2>Operation Panel</h2>
-        <ul>
-          <li><button className="toss restart"
-        onClick={this.restartSimulation.bind(this)}>
-        <FontAwesomeIcon icon={faRotateLeft} />
-      </button> Restart Simulation</li>
-        <li>
-        <button className="toss draw"
-      onClick={this.drawAnotherCoin.bind(this)}>
-        <FontAwesomeIcon icon={faHandLizard} />
-      </button>  Draw Another Coin</li>
-      <li>
-      <button className="toss toss-count" onClick={this.toss.bind(this)}>
-        <FontAwesomeIcon icon={faPlay} />
-      </button> Toss <input id="toss-count" defaultValue={500} /> Times.
-      </li>
-      <li>
-      <button className="toss toss-all" onClick={this.tossAll.bind(this)}>
-        <FontAwesomeIcon icon={faForward} />
-      </button> Toss All Remaining {this.tosslimit - this.state.tossed} Coins.
-      </li>
-        </ul>
-
         {/* 
         coin: {this.state.currentCoinIndex}<br/>
         inner idx: {this.state.currentScriptInnerStep}<br/>
         idx: {this.state.currentScriptStep}<br/>
         */}
-        <h2>Result</h2>
         <p className={this.state.hasError? "toss-error": "toss-msg"}>{this.state.message}</p>
         Tossed Coins: {this.state.tossed}<br/>
         Heads: {this.state.heads} ({(vh*100.0).toFixed(2)}%)<br/>
@@ -387,24 +371,33 @@ class WorkingArea extends React.Component {
 
   render() {
     return (<div>
-      <Simulator seq={this.state.trialSeq} urn={this.state.urn} cmds={this.state.scriptCommands}></Simulator>
+      <p>
+      <label>
+        <b>Commands:</b><br/>
+      <textarea id="toss-workarea" className="toss" ref={this.textareaRef} onChange={this.changeCommand.bind(this)} value={this.state.command} />
+      </label>
+      </p>
+      <button className={this.state.hasError? "toss-error": "toss"} disabled={this.state.hasError}
+      onClick={this.runSimulation.bind(this)}
+      >Run Simulation</button>
+      <p className={this.state.hasError? "toss-error":"toss-msg"}>
+        {this.state.message}
+      </p>
+      <Simulator seq={this.state.trialSeq} urn={this.state.urn} cmds={this.state.scriptCommands} allowToStart={this.state.allowToStart}></Simulator>
     </div>)
   }
 }
 
 class TossCoinMain extends React.Component {
   componentDidMount() {
-    if (window.MathJax !== undefined) {
-      window.MathJax.typeset();
-    }
+    console.log(window.MathJax);
+    window.MathJax.typeset();
   }
   render() {
     return (<Layout>
       <h1>Coin Tossing Simulation</h1>
-      <h2>Instructions</h2>
       <p>
-        You are given an urn with two biased coins $p=0.7$ and $p=0.3$.
-        You have drawn a coin from the urn, but you cannot tell which coin is which from its appearance.
+        <b>Instructions.</b> You are given an urn with two biased coins $p=0.7$ and $p=0.3$.
       </p>
       <WorkingArea></WorkingArea>
     </Layout>)
