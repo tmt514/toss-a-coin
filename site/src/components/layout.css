@@ -271,3 +271,11 @@ input#toss-count {
   font-size: 120%;
   width: 100px;
 }
+
+@import url('https://fonts.googleapis.com/css?family=Source+Serif+Pro:regular');
+
+input#urn {
+  font-family: 'Source Serif Pro', monospace;
+  font-size: 150%;
+  width: 75%;
+}
