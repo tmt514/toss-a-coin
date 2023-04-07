@@ -9,6 +9,7 @@ import {
   faForward,
   faMagicWandSparkles,
   faPause,
+  faSquare,
 } from '@fortawesome/free-solid-svg-icons'
 
 import Layout from "../components/layout"
@@ -229,31 +230,39 @@ class Simulator extends React.Component {
     var cmd = state.cmdQueue[0];
     if (cmd[0] === "Toss") {
       
-      // simulate here.
-      state.tossed += 1;
-      var p = this.props.urn[state.currentCoinIndex];
-      if (Math.random() <= p) {
-        state.heads += 1;
-        state.history.push(1);
-        state.historyHeadsProb.push(state.heads / state.tossed);
-        state.historyCoinSeq.push(state.coinSeq);
-      } else {
-        state.tails += 1;
-        state.history.push(0);
-        state.historyHeadsProb.push(state.heads / state.tossed);
-        state.historyCoinSeq.push(state.coinSeq);
-      }
+      // speed up tossing.
+      var repeat = 1;
+      if (cmd[1] >= 20 || (cmd[1] >= 6 && cmd[1] + state.tossed >= this.tosslimit)) repeat = 6;
 
-      // update cmdQueue
-      if (cmd[1] <= 1) {
-        state.message = "Tossing coins..."
-        state.cmdQueue.shift();
-        if (state.cmdQueue.length === 0) {
-          state.message = "Done!"
+      while (repeat > 0) {
+        repeat -= 1;
+
+        // simulate here.
+        state.tossed += 1;
+        var p = this.props.urn[state.currentCoinIndex];
+        if (Math.random() <= p) {
+          state.heads += 1;
+          state.history.push(1);
+          state.historyHeadsProb.push(state.heads / state.tossed);
+          state.historyCoinSeq.push(state.coinSeq);
+        } else {
+          state.tails += 1;
+          state.history.push(0);
+          state.historyHeadsProb.push(state.heads / state.tossed);
+          state.historyCoinSeq.push(state.coinSeq);
         }
-      } else {
-        state.message = "Tossing coins..."
-        state.cmdQueue[0][1] -= 1;
+
+        // update cmdQueue
+        if (cmd[1] <= 1) {
+          state.message = "Tossing coins..."
+          state.cmdQueue.shift();
+          if (state.cmdQueue.length === 0) {
+            state.message = "Done!"
+          }
+        } else {
+          state.message = "Tossing coins..."
+          state.cmdQueue[0][1] -= 1;
+        }
       }
       this.setState(state, callback);
     } else if (cmd[0] === "DrawAnotherCoin") {
@@ -333,6 +342,13 @@ class Simulator extends React.Component {
     var latestdata = [];
     var currentTossed = 0;
     var currentHead = 0;
+
+    // for efficiency, we force chart to not update too frequently if there are waiting ticks.
+    var still_running = false;
+    if (this.state.cmdQueue.length > 0) {
+      still_running = true;
+    }
+    
     for (var i = 1; i <= this.tosslimit; i++) {
       labels.push(i);
       if (i <= this.state.history.length) {
@@ -539,6 +555,37 @@ class WorkingArea extends React.Component {
     window.MathJax.typeset();
     window.MathJax.typesetClear();
   }
+
+  componentDidMount() {
+    // setup useful functions for coin generation.
+    window.linspace = ((min, max, N)=>{
+      var a = [];
+      N--;
+      for(var i = 0; i <= N; i++) a.push(min+i*(max-min)/N);
+      return a;
+    });
+    window.uniform_prior = ((N)=>{
+      var a = [];
+      for(var i = 0; i < N; i++) a.push(Math.random());
+      return a;
+    });
+    window.normal_prior = ((N)=>{
+      // box muller transform 
+      // https://stackoverflow.com/questions/25582882/javascript-math-random-normal-distribution-gaussian-bell-curve
+      var bm = (() => {
+        let u = 0, v = 0;
+        while(u === 0) u = Math.random(); //Converting [0,1) to (0,1)
+        while(v === 0) v = Math.random();
+        let num = Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+        num = num / 10.0 + 0.5; // Translate to 0 -> 1
+        if (num > 1 || num < 0) return bm() // resample between 0 and 1
+        return num
+      });
+      var a = [];
+      for(var i = 0; i < N; i++) a.push(bm());
+      return a;
+    });
+  }
   
 
   render() {
@@ -551,6 +598,14 @@ class WorkingArea extends React.Component {
       <p>
         <input id="urn" defaultValue="[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]" />
         <button className="toss" onClick={this.redefineUrn.bind(this)}><FontAwesomeIcon icon={faMagicWandSparkles}/></button>
+        <br/>
+      <small>
+        <b>Hint:</b> This is simply a javascript <tt>eval()</tt> without any protection (change with caution!) We have pre-defined some useful functions for you to use. Just  copy and paste the commands to the above input box, and then click on the magic icon.
+        <br/>
+        <FontAwesomeIcon icon={faSquare}/> <tt>linspace(0.0, 1.0, 1001)</tt><br/>
+        <FontAwesomeIcon icon={faSquare}/> <tt>uniform_prior(1000)</tt><br/>
+        <FontAwesomeIcon icon={faSquare}/> <tt>normal_prior(1000)</tt><br/>
+      </small>
       </p>
       <h2>Instructions</h2>
       <UrnMessage urn={this.state.urn} />
