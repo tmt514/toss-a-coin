@@ -9,6 +9,7 @@
     "@fortawesome/free-solid-svg-icons": "^6.2.1",
     "@fortawesome/react-fontawesome": "^0.2.0",
     "@react-spring/web": "^9.7.1",
+    "@use-gesture/react": "^10.3.0",
     "chart.js": "^4.0.1",
     "gatsby": "^5.2.0",
     "gatsby-plugin-google-gtag": "^5.2.0",
