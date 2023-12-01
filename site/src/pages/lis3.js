@@ -13,7 +13,8 @@ import { faJournalWhills } from "@fortawesome/free-solid-svg-icons"
 const SecondPage = () => {
   // const [data, setData] = useState([1, 2, 10, 14, 8, 3, 4, 7, 13, 12, 5, 9, 15, 16, 11, 6]);
   // const [data, setData] = useState([1, 2, 10, 14, 8, 3, 4, 7]);
-  const [data, setData] = useState([13, 12, 5, 9, 15, 16, 11, 6]);
+  const [data, setData] = useState([13, 12, 5, 9, 15, 16, 11]);
+  // const [data, setData] = useState([13, 12, 5, 9, 15, 16, 11, 6]);
   const randomPermute = () => {
     var p = []
     for (var i = 0; i < 16; i++) p.push(i+1);
