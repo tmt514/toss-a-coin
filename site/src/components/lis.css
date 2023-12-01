@@ -10,3 +10,18 @@
   user-select: none;
   pointer-events: none;
 }
+
+.markov-sim-result td {
+  background-color: #DDD;
+  min-width: 100px;
+}
+
+
+.markov-sim-result th {
+  background-color: #DDD;
+}
+
+#TransitionMatrix {
+  font-size: 120%;
+  width: 100%;
+}
